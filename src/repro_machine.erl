@@ -38,4 +38,14 @@ apply(_Metadata, _Command, State) ->
 
 state_enter(RaState, #state{name = Name}) ->
     io:format("[~p] state_enter: ~p~n", [Name, RaState]),
+    case Name of
+        repro_a ->
+            ok;
+        repro_b ->
+            %%            timer:sleep(500),
+            ok;
+        repro_c ->
+            %%            timer:sleep(500),
+            ok
+    end,
     [].

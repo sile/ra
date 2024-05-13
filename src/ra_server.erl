@@ -984,7 +984,7 @@ handle_pre_vote(#pre_vote_result{term = Term, vote_granted = true,
                                  token = Token},
                 #{current_term := Term,
                   votes := Votes,
-                  cfg := #cfg{log_id = LogId},
+                  cfg := #cfg{id = Id, log_id = LogId},
                   pre_vote_token := Token,
                   cluster := Nodes} = State0) ->
     ?DEBUG("~ts: pre_vote granted ~w for term ~b votes ~b",
@@ -993,6 +993,24 @@ handle_pre_vote(#pre_vote_result{term = Term, vote_granted = true,
     State = update_term(Term, State0),
     case required_quorum(Nodes) of
         NewVotes ->
+            case Id of
+                {repro_a, _} ->
+                    %% Ensure that the log lengths of `repro_c` and `repro_b` are greater than that of `repro_a`
+                    %% to prevent `repro_a` from becoming the new leader.
+                    %% (NOTE: `#append_entries_rpc{}` from `repro_c` to `repro_a` is delayed.)
+                    {ok, ok, _} = ra:process_command({repro_c, node()}, hello),
+
+                    %% NOTE:
+                    %% `repro_c` will transition from leader to follower at some point later
+                    %% because `repro_a` will become `candidate` and increment the term.
+
+                    %% Stop `repro_b`.
+                    %% This ensure that it's mandatory for `repro_c` to gain a vote from
+                    %% `repro_a` to be re-elected as the leader.
+                    ok = ra:stop_server(default, {repro_b, node()});
+                _ ->
+                    ok
+            end,
             call_for_election(candidate, State);
         _ ->
             {pre_vote, State#{votes => NewVotes}, []}

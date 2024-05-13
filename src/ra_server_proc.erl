@@ -1,3 +1,4 @@
+%% @efmt:off
 %% This Source Code Form is subject to the terms of the Mozilla Public
 %% License, v. 2.0. If a copy of the MPL was not distributed with this
 %% file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -342,10 +343,30 @@ do_init(#{id := Id,
                    low_priority_commands = ra_ets_queue:new(),
                    server_state = ServerState},
     ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
+    put(delayed_sender, spawn_link(fun() -> delayed_send(queue:new()) end)),
     State.
 
 %% callback mode
 callback_mode() -> [state_functions, state_enter].
+
+delayed_send(Queue0) ->
+    Now = erlang:monotonic_time(millisecond),
+    Timeout =
+        case queue:peek(Queue0) of
+            {empty, _} ->
+                infinity;
+            {value, {SendTime, _, _}} ->
+                max(0, SendTime - Now)
+        end,
+    receive
+        {send, Delay, To, Msg} ->
+            Queue1 = queue:in({Now + Delay, To, Msg}, Queue0),
+            delayed_send(Queue1)
+    after Timeout ->
+            {{value, {_, To, Msg}}, Queue1} = queue:out(Queue0),
+            To ! Msg,
+            delayed_send(Queue1)
+    end.
 
 %%%===================================================================
 %%% State functions
@@ -1630,6 +1651,13 @@ reject_command(Pid, Corr, #state{leader_monitor = _Mon} = State) ->
 maybe_persist_last_applied(#state{server_state = NS} = State) ->
      State#state{server_state = ra_server:persist_last_applied(NS)}.
 
+send({repro_a, _} = To, Msg, Conf) ->
+    %% Add a delay when sending messages to `repro_a` server.
+    %%
+    %% Without this delay, the leader will prevent `repro_a` from transitioning to `candidate` state
+    %% by promptly sending an empty `#append_entries_rpc{}` upon receiving `#pre_vote_rpc{}` from `repro_a`.
+    get(delayed_sender) ! {send, 1000, To, Msg},
+    ok;
 send(To, Msg, Conf) ->
     % we do not want to block the ra server whilst attempting to set up
     % a TCP connection to a potentially down node or when the distribution

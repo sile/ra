@@ -949,12 +949,13 @@ handle_leader(#pre_vote_rpc{term = Term, candidate_id = Cand} = Msg,
             {follower, update_term(Term, State0#{leader_id => undefined}),
                        [{next_event, Msg}]}
     end;
-handle_leader(#pre_vote_rpc{candidate_id = FromId, term = Term},
+handle_leader(#pre_vote_rpc{candidate_id = _FromId, term = Term},
               #{current_term := CurTerm} = State0)
   when Term =< CurTerm ->
     % enforce leadership
     %% sile: timer:sleep(100),
-    {State, Effects} = make_all_rpcs(FromId, State0),
+    %% {State, Effects} = make_all_rpcs(FromId, State0),
+    {State, Effects} = make_all_rpcs(State0),
     {leader, State, Effects};
 handle_leader(#request_vote_result{}, State) ->
     %% handle to avoid logging as unhandled
@@ -2291,11 +2292,11 @@ make_all_rpcs(State0) ->
     {State2, EffectsAER ++ EffectsHR}.
 
 
-make_all_rpcs(ExceptId, State0) ->
-    {State1, EffectsHR} = update_heartbeat_rpc_effects(State0),
-    {State2, EffectsAER} = make_rpcs_for(peers_with_normal_status(State1), State1),
-    Effects = [ E || E = {send_rpc, Id, _} <- EffectsAER ++ EffectsHR, Id =/= ExceptId ],
-    {State2, Effects}.
+%% make_all_rpcs(ExceptId, State0) ->
+%%     {State1, EffectsHR} = update_heartbeat_rpc_effects(State0),
+%%     {State2, EffectsAER} = make_rpcs_for(peers_with_normal_status(State1), State1),
+%%     Effects = [ E || E = {send_rpc, Id, _} <- EffectsAER ++ EffectsHR, Id =/= ExceptId ],
+%%     {State2, Effects}.
 
 
 make_rpcs_for(Peers, State) ->

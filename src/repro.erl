@@ -16,11 +16,11 @@ run() ->
     Machine = {module, ?MODULE, #{}},
     Node = node(),
     ServerIds = [{repro_a, Node}, {repro_b, Node}, {repro_c, Node}],
-    {ok, ServersStarted, []} = ra:start_cluster(default, Module, Machine, ServerIds),
+    {ok, _ServersStarted, []} = ra:start_cluster(default, Module, Machine, ServerIds),
     ok = timer:sleep(5000),
 
-    %% Assumes repro_a is the leader.
-    {repro_c, Node} = maps:get(leader_id, element(2, ra:member_overview(dyn_members))),
+    %% Assumes repro_c is the leader.
+    {repro_c, Node} = maps:get(leader_id, element(2, ra:member_overview(repro_a))),
 
     %% Trigger an election that will cause the problem described in this issue.
     io:format("# trigger election~n"),

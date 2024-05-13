@@ -353,7 +353,7 @@ delayed_send(Queue0) ->
     Now = erlang:monotonic_time(millisecond),
     Timeout =
         case queue:peek(Queue0) of
-            {empty, _} ->
+            empty ->
                 infinity;
             {value, {SendTime, _, _}} ->
                 max(0, SendTime - Now)
@@ -1651,7 +1651,7 @@ reject_command(Pid, Corr, #state{leader_monitor = _Mon} = State) ->
 maybe_persist_last_applied(#state{server_state = NS} = State) ->
      State#state{server_state = ra_server:persist_last_applied(NS)}.
 
-send({repro_a, _} = To, Msg, Conf) ->
+send({repro_a, _} = To, Msg, _Conf) ->
     %% Add a delay when sending messages to `repro_a` server.
     %%
     %% Without this delay, the leader will prevent `repro_a` from transitioning to `candidate` state

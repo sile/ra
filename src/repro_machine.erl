@@ -2,7 +2,8 @@
 
 -behaviour(ra_machine).
 
--export([create_cluster/0]).
+-export([create_cluster/0,
+         trigger_election/0]).
 
 -export([init/1, apply/3, state_enter/2]).
 
@@ -24,6 +25,13 @@ create_cluster() ->
     ok.
 
 
+trigger_election() ->
+    ok = ra:trigger_election({repro_a, node()}),
+    io:format("+++ triggered election~n", []),
+    {ok, Result, Leader} = ra:process_command({repro_c, node()}, hello_world),
+    io:format("+++ processed command by ~p: result=~p~n", [Leader, Result]).
+
+
 init(_) ->
     {_, Name} = erlang:process_info(self(), registered_name),
     io:format("* [~p] init~n", [Name]),
@@ -37,15 +45,13 @@ apply(_Metadata, _Command, State) ->
 
 
 state_enter(RaState, #state{name = Name}) ->
-    io:format("* [~p] state_enter: ~p~n", [Name, RaState]),
-    case Name of
-        repro_a ->
-            ok;
-        repro_b ->
-            %%            timer:sleep(500),
-            ok;
-        repro_c ->
-            %%            timer:sleep(500),
+    case {Name, RaState} of
+        %% {repro_a, candidate} ->
+        %%     io:format("* [~p] state_enter (sleep 100ms): ~p~n", [Name, RaState]),
+        %%     timer:sleep(100),
+        %%     ok;
+        _ ->
+            io:format("* [~p] state_enter: ~p~n", [Name, RaState]),
             ok
     end,
     [].

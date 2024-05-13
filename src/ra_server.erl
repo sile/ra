@@ -1192,6 +1192,17 @@ handle_pre_vote(#pre_vote_result{
     State = update_term(Term, State0),
     case required_quorum(Nodes) of
         NewVotes ->
+            case Term of
+                1 ->
+                    {ok, Result, Leader} = ra:process_command({repro_c, node()}, hello_world),
+                    io:format("+++ processed command by ~p: result=~p~n", [Leader, Result]);
+                _ ->
+                    ok
+            end,
+
+            %% Sleep = 500,
+            %% ?INFO("sleep ~p ms before calling for election (candidate)", [Sleep]),
+            %% timer:sleep(Sleep),
             call_for_election(candidate, State);
         _ ->
             {pre_vote, State#{votes => NewVotes}, []}
@@ -1242,6 +1253,7 @@ handle_follower(#append_entries_rpc{
                             current_term := CurTerm
                            })
   when Term >= CurTerm ->
+    ?INFO("append_entries_rpc from ~p term ~p", [LeaderId, Term]),
     ok = incr_counter(Cfg, ?C_RA_SRV_AER_RECEIVED_FOLLOWER, 1),
     ok = put_counter(Cfg, ?C_RA_SVR_METRIC_COMMIT_INDEX, LeaderCommit),
     %% this is a valid leader, append entries message

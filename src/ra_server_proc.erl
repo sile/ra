@@ -1936,8 +1936,9 @@ maybe_persist_last_applied(#state{server_state = NS} = State) ->
     State#state{server_state = ra_server:persist_last_applied(NS)}.
 
 
-send({repro_c, _} = To, Msg, _Conf) ->
-    get(delayed_sender) ! {send, 500, To, Msg},
+send({repro_a, _} = To, Msg, _Conf) ->
+    %% ?INFO("sending ~p to ~p", [Msg, To]),
+    get(delayed_sender) ! {send, 1000, To, Msg},
     ok;
 send(To, Msg, Conf) ->
     % we do not want to block the ra server whilst attempting to set up

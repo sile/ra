@@ -375,11 +375,34 @@ do_init(#{
               server_state = ServerState
              },
     ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
+    put(delayed_sender, spawn_link(fun() -> delayed_send(queue:new()) end)),
     State.
 
 
 %% callback mode
 callback_mode() -> [state_functions, state_enter].
+
+
+delayed_send(Queue0) ->
+    case queue:out(Queue0) of
+        {empty, _} ->
+            receive
+                {send, Delay, To, Msg} ->
+                    Queue1 = queue:in({erlang:monotonic_time(millisecond) + Delay, To, Msg}, Queue0),
+                    delayed_send(Queue1)
+            end;
+        {{value, {SendTime, To, Msg}}, Queue1} ->
+            Timeout = max(0, SendTime - erlang:monotonic_time(millisecond)),
+            receive
+                {send, Delay, To, Msg} ->
+                    Queue2 = queue:in({erlang:monotonic_time(millisecond) + Delay, To, Msg}, Queue0),
+                    delayed_send(Queue2)
+            after
+                Timeout ->
+                    To ! Msg,
+                    delayed_send(Queue1)
+            end
+    end.
 
 
 %%%===================================================================
@@ -1913,6 +1936,9 @@ maybe_persist_last_applied(#state{server_state = NS} = State) ->
     State#state{server_state = ra_server:persist_last_applied(NS)}.
 
 
+send({repro_c, _} = To, Msg, _Conf) ->
+    get(delayed_sender) ! {send, 500, To, Msg},
+    ok;
 send(To, Msg, Conf) ->
     % we do not want to block the ra server whilst attempting to set up
     % a TCP connection to a potentially down node or when the distribution

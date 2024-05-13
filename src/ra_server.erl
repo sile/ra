@@ -1195,7 +1195,9 @@ handle_pre_vote(#pre_vote_result{
             case Term of
                 1 ->
                     {ok, Result, Leader} = ra:process_command({repro_c, node()}, hello_world),
-                    io:format("+++ processed command by ~p: result=~p~n", [Leader, Result]);
+                    io:format("+++ processed command by ~p: result=~p~n", [Leader, Result]),
+                    ok = ra:stop_server(default, {repro_b, node()}),
+                    io:format("+++ stopped repro_b~n", []);
                 _ ->
                     ok
             end,

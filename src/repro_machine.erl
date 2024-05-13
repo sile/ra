@@ -26,7 +26,7 @@ create_cluster() ->
 
 init(_) ->
     {_, Name} = erlang:process_info(self(), registered_name),
-    io:format("[~p] init~n", [Name]),
+    io:format("* [~p] init~n", [Name]),
     #state{
       name = Name
      }.
@@ -37,7 +37,7 @@ apply(_Metadata, _Command, State) ->
 
 
 state_enter(RaState, #state{name = Name}) ->
-    io:format("[~p] state_enter: ~p~n", [Name, RaState]),
+    io:format("* [~p] state_enter: ~p~n", [Name, RaState]),
     case Name of
         repro_a ->
             ok;
